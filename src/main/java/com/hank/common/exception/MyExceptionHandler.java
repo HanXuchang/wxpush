@@ -5,7 +5,6 @@ import com.hank.common.result.ErrorCodeEnum;
 import com.hank.common.result.ResponseApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -15,8 +14,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.yaml.snakeyaml.constructor.DuplicateKeyException;
-
-import javax.servlet.http.HttpServletRequest;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
@@ -26,9 +23,6 @@ import java.util.Arrays;
 @RestControllerAdvice
 public class MyExceptionHandler {
     private Logger logger = LoggerFactory.getLogger(getClass());
-    @Autowired
-    private HttpServletRequest request;
-
 
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseApi handleDuplicateKeyException(DuplicateKeyException e) {
@@ -63,10 +57,9 @@ public class MyExceptionHandler {
 
     /**
      * 类型转换异常
-     *
-     * @param e
-     * @return
      */
+
+
     @ExceptionHandler(NumberFormatException.class)
     public ResponseApi handleNumberFormatException(NumberFormatException e) {
         logger.error(e.getMessage(), e);
@@ -81,9 +74,6 @@ public class MyExceptionHandler {
 
     /**
      * 参数丢失
-     *
-     * @param e
-     * @return
      */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseApi handleClientAbortException(MissingServletRequestParameterException e) {

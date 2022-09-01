@@ -1,7 +1,9 @@
 package com.hank.controller;
 
 import com.alibaba.fastjson.JSONObject;
+import com.hank.entity.Config;
 import com.hank.entity.UserEntity;
+import com.hank.service.IConfigService;
 import com.hank.service.JiTangMsgService;
 import com.hank.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -17,40 +19,25 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 
-/**
- * @author vic_miao
- * @date 2022年8月23日 10点23分
- */
 @RestController
 @Slf4j
 public class WxController {
 
-    @Value("${wx.mp.appId:#{null}}")
-    private String appId;
-    @Value("${wx.mp.secret:#{null}}")
-    private String secret;
 
-    @Value("${wx.mp.templateId}")
-    private String templateId;
-    @Value("${wx.mp.city:#{null}}")
-    private String city;
-    @Value("${wx.mp.firstMsg:#{null}}")
-    private String firstMsg;
-    @Value("${wx.mp.openid:#{null}}")
-    private String autoOpenId;
 
-    @Autowired
+    @Resource
+    private IConfigService iConfigService;
+    @Resource
     private JiTangMsgService jiTangMsgService;
-
-    @Autowired
+    @Resource
     private UserService userService;
 
-
     @GetMapping("/wx/push")
-    public String wxPush(UserEntity userEntity) {
+    public String wxPush() {
         List<UserEntity> list = userService.list();
         for (UserEntity entity : list) {
             push(entity);
@@ -58,15 +45,18 @@ public class WxController {
         return "推送成功";
     }
 
-//    @Scheduled(cron = "${wx.mp.cron:-}")
-//    public void autoPush() {
-//        if (StringUtils.isEmpty(autoOpenId)) {
-//            log.error("配置了定时自动推送，但是openid配置为空");
-//            return;
-//        }
-//        push(autoOpenId);
-//        log.info("定时推送成功");
-//    }
+    @Scheduled(cron = "${wx.mp.cron:#{null}}")
+    public void autoPush() {
+        List<UserEntity> list = userService.list();
+        if (list.size()==0) {
+            log.error("配置了定时自动推送，但是openid配置为空");
+            return;
+        }
+        for (UserEntity userEntity : list) {
+            push(userEntity);
+        }
+        log.info("定时推送成功");
+    }
 
 
     /**
@@ -74,6 +64,9 @@ public class WxController {
      * @param userEntity 用户信息
      */
     private void push(UserEntity userEntity) {
+        Config config = iConfigService.getById(1);
+        String appId = config.getAppId();
+        String secret = config.getSecret();
         if (StringUtils.isEmpty(userEntity.getOpenId())) {
             throw new RuntimeException("推送用户为空");
         }
@@ -82,16 +75,35 @@ public class WxController {
             throw new RuntimeException("微信配置错误，请检查");
         }
         JSONObject weatherFromThird = null;
+        JSONObject weatherFromThird2 = null;
+        String info = null;           //天气
+        String temperature = null;    //温度
+        String humidity = null;       //湿度
         try {
-            System.out.println(userEntity.getCity());
             weatherFromThird = jiTangMsgService.getWeatherFromThird(userEntity.getCity());
+            if (weatherFromThird!=null){
+                info = weatherFromThird.getJSONObject("realtime").getString("info");
+                temperature = weatherFromThird.getJSONObject("realtime").getString("temperature");
+                humidity = weatherFromThird.getJSONObject("realtime").getString("humidity")+"%";
+            }
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
         if (null == weatherFromThird) {
-            throw new RuntimeException("获取天气出错");
+            try {
+                weatherFromThird2 = jiTangMsgService.getWeatherFromThird2(userEntity.getCity());
+                info = weatherFromThird2.getString("wea");
+                temperature = weatherFromThird2.getString("tem");
+                humidity = weatherFromThird2.getString("humidity");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+            if (null == weatherFromThird2){
+                throw new RuntimeException("获取天气出错");
+            }
         }
-        String jiTangMsg = jiTangMsgService.getMsgFromThird();
+//        String jiTangMsg = jiTangMsgService.getMsgFromThird();
+        String jiTangMsg = "嘿嘿";
 
         WxMpDefaultConfigImpl wxMpConfigStorage = new WxMpDefaultConfigImpl();
         wxMpConfigStorage.setAppId(appId);
@@ -101,9 +113,9 @@ public class WxController {
         WxMpTemplateMessage templateMessage = WxMpTemplateMessage.builder().toUser(userEntity.getOpenId()).templateId(userEntity.getTemplateId()).build();
         templateMessage.addData(new WxMpTemplateData("first", userEntity.getFirstMsg() == null ? "" : userEntity.getFirstMsg(), "#0030EE"));
         templateMessage.addData(new WxMpTemplateData("city", userEntity.getCity() == null ? "未知" : userEntity.getCity(), "#0099FF"));
-        templateMessage.addData(new WxMpTemplateData("weather", weatherFromThird.getJSONObject("realtime").getString("info"), "#0099FF"));
-        templateMessage.addData(new WxMpTemplateData("temperature", weatherFromThird.getJSONObject("realtime").getString("temperature") + "℃", "#E6421A"));
-        templateMessage.addData(new WxMpTemplateData("humidity", weatherFromThird.getJSONObject("realtime").getString("humidity") + "%", "#3333CC"));
+        templateMessage.addData(new WxMpTemplateData("weather", info, "#0099FF"));
+        templateMessage.addData(new WxMpTemplateData("temperature", temperature + "℃", "#E6421A"));
+        templateMessage.addData(new WxMpTemplateData("humidity", humidity, "#3333CC"));
         templateMessage.addData(new WxMpTemplateData("content", StringUtils.isEmpty(jiTangMsg) ? "" : jiTangMsg, "#A417C7"));
         try {
             log.info("发送模板消息，模板id:{},消息内容:{}", userEntity.getTemplateId(), templateMessage.toJson());

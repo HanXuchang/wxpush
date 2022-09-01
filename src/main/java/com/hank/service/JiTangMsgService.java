@@ -8,4 +8,7 @@ public interface JiTangMsgService {
     String getMsgFromThird();
 
     JSONObject getWeatherFromThird(String city) throws UnsupportedEncodingException;
+
+    JSONObject getWeatherFromThird2(String city) throws UnsupportedEncodingException;
+
 }
