@@ -102,8 +102,8 @@ public class WxController {
                 throw new RuntimeException("获取天气出错");
             }
         }
-//        String jiTangMsg = jiTangMsgService.getMsgFromThird();
-        String jiTangMsg = "嘿嘿";
+        String jiTangMsg = jiTangMsgService.getMsgFromThird();
+//        String jiTangMsg = "嘿嘿";
 
         WxMpDefaultConfigImpl wxMpConfigStorage = new WxMpDefaultConfigImpl();
         wxMpConfigStorage.setAppId(appId);
