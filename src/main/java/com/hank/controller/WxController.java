@@ -38,14 +38,13 @@ public class WxController {
     private ISysColorService iSysColorService;
 
     private JSONObject weatherFromThird = null;
-    private JSONObject weatherFromThird2 = null;
-    private JSONObject weatherFromThird3 = null;
     private String info = null;           //天气
     private String temperature = null;    //温度
     private String tem1 = null;           //最高温度
     private String tem2 = null;           //最低温度
     private String humidity = null;       //湿度
     private String date = null;           //时间
+    private String content = null;
 
     private String appId = null;
     private String secret = null;
@@ -63,13 +62,11 @@ public class WxController {
     public void autoPush() {
         List<UserEntity> list = userService.list();
         if (list.size()==0) {
-            log.error("配置了定时自动推送，但是openid配置为空");
             return;
         }
         for (UserEntity userEntity : list) {
-            push(userEntity);
+            push2(userEntity);
         }
-        log.info("定时推送成功");
     }
 
 
@@ -99,14 +96,14 @@ public class WxController {
         }
         if (null == weatherFromThird) {
             try {
-                weatherFromThird2 = msgService.getWeatherFromThird2(userEntity.getCity());
-                info = weatherFromThird2.getString("wea");
-                temperature = weatherFromThird2.getString("tem");
-                humidity = weatherFromThird2.getString("humidity");
+                weatherFromThird = msgService.getWeatherFromThird2(userEntity.getCity());
+                info = weatherFromThird.getString("wea");
+                temperature = weatherFromThird.getString("tem");
+                humidity = weatherFromThird.getString("humidity");
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
-            if (null == weatherFromThird2){
+            if (null == weatherFromThird){
                 throw new RuntimeException("获取天气出错");
             }
         }
@@ -149,23 +146,25 @@ public class WxController {
             throw new RuntimeException("微信配置错误，请检查");
         }
         try {
-            weatherFromThird3 = msgService.getWeatherFromThird3(userEntity.getCity());
-            date = weatherFromThird3.getString("date")+"  "+weatherFromThird3.getString("week");
-            info = weatherFromThird3.getString("wea");
-            temperature = weatherFromThird3.getString("tem");
-            tem1 = weatherFromThird3.getString("tem1");
-            tem2 = weatherFromThird3.getString("tem2");
-            humidity = weatherFromThird3.getString("humidity");
+            weatherFromThird = msgService.getWeatherFromThird2(userEntity.getCity());
+            date = weatherFromThird.getString("date")+"  "+weatherFromThird.getString("week");
+            info = weatherFromThird.getString("wea");
+            temperature = weatherFromThird.getString("tem");
+            tem1 = weatherFromThird.getString("tem1");
+            tem2 = weatherFromThird.getString("tem2");
+            humidity = weatherFromThird.getString("humidity");
+            content = weatherFromThird.getString("air_tips");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        if (null == weatherFromThird3){
+        if (null == weatherFromThird){
             throw new RuntimeException("获取天气出错");
         }
         //鸡汤
 //        String jiTangMsg = msgService.getMsgFromThird();
-        String en = msgService.getEnglish().getString("english");
-        String cn = msgService.getEnglish().getString("chinese");
+        JSONObject english = msgService.getEnglish();
+        String en = english.getString("english");
+        String cn = english.getString("chinese");
 
         WxMpDefaultConfigImpl wxMpConfigStorage = new WxMpDefaultConfigImpl();
         wxMpConfigStorage.setAppId(appId);
@@ -192,6 +191,8 @@ public class WxController {
         templateMessage.addData(new WxMpTemplateData("en", StringUtils.isEmpty(en) ? "" : en, iSysColorService.getById((colorId+6)%count+1).getColor()));
         //中文
         templateMessage.addData(new WxMpTemplateData("cn", StringUtils.isEmpty(cn) ? "" : cn, iSysColorService.getById((colorId+7)%count+1).getColor()));
+
+        templateMessage.addData(new WxMpTemplateData("content", StringUtils.isEmpty(content) ? "" : content, iSysColorService.getById((colorId+9)%count+1).getColor()));
         try {
             wxMpService.getTemplateMsgService().sendTemplateMsg(templateMessage);
         } catch (Exception ignored) {

@@ -2,6 +2,7 @@ package com.hank;
 
 import com.hank.service.ISysColorService;
 import com.hank.service.MsgService;
+import com.hank.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -16,13 +17,13 @@ class WxpushApplicationTests {
     private MsgService msgService;
     @Resource
     private ISysColorService iSysColorService;
+    @Resource
+    private UserService userService;
 
     @Test
     void contextLoads() throws UnsupportedEncodingException {
 
-
-        System.out.println(msgService.getWeatherFromThird3("北京"));
-
+        System.out.println(userService.count());
 
     }
 

@@ -100,11 +100,10 @@ public class MsgServiceImpl implements MsgService {
         if (StringUtils.isEmpty(city)) {
             return null;
         }
-        String get = HttpUtil.doGet("https://v0.yiketianqi.com/api?unescape=1&version=v61" +
+        String get = HttpUtil.doGet("https://yiketianqi.com/api?unescape=1&version=v6" +
                 "&appid="+yikeappid+
                 "&appsecret="+yikeappsecret+
                 "&city="+city);
-        log.info("从第三方平台获取天气预报的结果是:{}", get);
         if (StringUtils.isNotEmpty(get)) {
             JSONObject jsonObject = JSON.parseObject(get);
             if (!jsonObject.containsKey("cityid")) {
