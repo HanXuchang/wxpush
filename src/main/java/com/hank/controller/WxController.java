@@ -2,6 +2,7 @@ package com.hank.controller;
 
 import com.alibaba.fastjson.JSONObject;
 import com.hank.entity.UserEntity;
+import com.hank.service.ISysColorService;
 import com.hank.service.ISysConfigService;
 import com.hank.service.MsgService;
 import com.hank.service.UserService;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.Resource;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import java.util.Random;
 
 @RestController
 @Slf4j
@@ -32,6 +34,8 @@ public class WxController {
     private MsgService msgService;
     @Resource
     private UserService userService;
+    @Resource
+    private ISysColorService iSysColorService;
 
     private JSONObject weatherFromThird = null;
     private JSONObject weatherFromThird2 = null;
@@ -41,6 +45,7 @@ public class WxController {
     private String tem1 = null;           //最高温度
     private String tem2 = null;           //最低温度
     private String humidity = null;       //湿度
+    private String date = null;           //时间
 
     private String appId = null;
     private String secret = null;
@@ -133,6 +138,8 @@ public class WxController {
      * @param userEntity 用户信息
      */
     private void push2(UserEntity userEntity) {
+        int count = iSysColorService.count();
+        int colorId = new Random().nextInt(count)+1;
         appId = iSysConfigService.getValue("app_id");
         secret = iSysConfigService.getValue("secret");
         if (StringUtils.isEmpty(userEntity.getOpenId())) {
@@ -143,6 +150,7 @@ public class WxController {
         }
         try {
             weatherFromThird3 = msgService.getWeatherFromThird3(userEntity.getCity());
+            date = weatherFromThird3.getString("date")+"  "+weatherFromThird3.getString("week");
             info = weatherFromThird3.getString("wea");
             temperature = weatherFromThird3.getString("tem");
             tem1 = weatherFromThird3.getString("tem1");
@@ -166,22 +174,24 @@ public class WxController {
         wxMpService.setWxMpConfigStorage(wxMpConfigStorage);
         WxMpTemplateMessage templateMessage = WxMpTemplateMessage.builder().toUser(userEntity.getOpenId()).templateId(userEntity.getTemplateId()).build();
         //第一句话
-        templateMessage.addData(new WxMpTemplateData("first", userEntity.getFirstMsg() == null ? "" : userEntity.getFirstMsg(), "#0066cc"));
+        templateMessage.addData(new WxMpTemplateData("first", userEntity.getFirstMsg() == null ? "" : userEntity.getFirstMsg(), iSysColorService.getById((colorId)%count+1).getColor()));
+        //日期
+        templateMessage.addData(new WxMpTemplateData("date", date == null ? "" : date, iSysColorService.getById((colorId+8)%count+1).getColor()));
         //城市
-        templateMessage.addData(new WxMpTemplateData("city", userEntity.getCity() == null ? "未知" : userEntity.getCity(), "#0099FF"));
+        templateMessage.addData(new WxMpTemplateData("city", userEntity.getCity() == null ? "未知" : userEntity.getCity(), iSysColorService.getById((colorId+1)%count+1).getColor()));
         //天气
-        templateMessage.addData(new WxMpTemplateData("weather", info, "#0099FF"));
+        templateMessage.addData(new WxMpTemplateData("weather", info, iSysColorService.getById((colorId+2)%count+1).getColor()));
         //当前温度
-        templateMessage.addData(new WxMpTemplateData("temperature", temperature + "℃", "#E6421A"));
+        templateMessage.addData(new WxMpTemplateData("temperature", temperature + "℃", iSysColorService.getById((colorId+3)%count+1).getColor()));
         //今日温度
-        templateMessage.addData(new WxMpTemplateData("tem1", tem1 + "℃", "#E6421A"));
-        templateMessage.addData(new WxMpTemplateData("tem2", tem2 + "℃", "#E6421A"));
+        templateMessage.addData(new WxMpTemplateData("tem1", tem1 + "℃", iSysColorService.getById((colorId+4)%count+1).getColor()));
+        templateMessage.addData(new WxMpTemplateData("tem2", tem2 + "℃", iSysColorService.getById((colorId+4)%count+1).getColor()));
         //今日湿度
-        templateMessage.addData(new WxMpTemplateData("humidity", humidity, "#3333CC"));
+        templateMessage.addData(new WxMpTemplateData("humidity", humidity, iSysColorService.getById((colorId+5)%count+1).getColor()));
         //英文
-        templateMessage.addData(new WxMpTemplateData("en", StringUtils.isEmpty(en) ? "" : en, "#F6B26B"));
+        templateMessage.addData(new WxMpTemplateData("en", StringUtils.isEmpty(en) ? "" : en, iSysColorService.getById((colorId+6)%count+1).getColor()));
         //中文
-        templateMessage.addData(new WxMpTemplateData("cn", StringUtils.isEmpty(cn) ? "" : cn, "#6FA8DC"));
+        templateMessage.addData(new WxMpTemplateData("cn", StringUtils.isEmpty(cn) ? "" : cn, iSysColorService.getById((colorId+7)%count+1).getColor()));
         try {
             wxMpService.getTemplateMsgService().sendTemplateMsg(templateMessage);
         } catch (Exception ignored) {
