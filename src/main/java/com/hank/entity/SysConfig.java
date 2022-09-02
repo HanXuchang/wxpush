@@ -13,29 +13,37 @@ import lombok.experimental.Accessors;
  * </p>
  *
  * @author 韩旭昌
- * @since 2022-09-01
+ * @since 2022-09-02
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
-public class Config implements Serializable {
+public class SysConfig implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;
 
-    private String appId;
+    /**
+     * key
+     */
+    private String paramKey;
 
-    private String secret;
+    /**
+     * value
+     */
+    private String paramValue;
 
-    private String juheJitangKey;
+    /**
+     * 状态   0：隐藏   1：显示
+     */
+    private Integer status;
 
-    private String juheWeatherKey;
-
-    private String yikeAppid;
-
-    private String yikeAppsecret;
+    /**
+     * 备注
+     */
+    private String remark;
 
 
 }

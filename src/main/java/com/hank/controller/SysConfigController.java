@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
  * </p>
  *
  * @author 韩旭昌
- * @since 2022-09-01
+ * @since 2022-09-02
  */
 @RestController
-@RequestMapping("/config")
-public class ConfigController {
+@RequestMapping("/sys-config")
+public class SysConfigController {
 
 }

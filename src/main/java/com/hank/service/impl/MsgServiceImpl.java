@@ -3,8 +3,8 @@ package com.hank.service.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.hank.common.utils.HttpUtil;
-import com.hank.service.IConfigService;
-import com.hank.service.JiTangMsgService;
+import com.hank.service.ISysConfigService;
+import com.hank.service.MsgService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.apache.commons.lang3.StringUtils;
@@ -12,16 +12,16 @@ import javax.annotation.Resource;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
-@Service("jiTangMsgService")
+@Service("msgService")
 @Slf4j
-public class JiTangMsgServiceImpl implements JiTangMsgService {
+public class MsgServiceImpl implements MsgService {
 
     @Resource
-    private IConfigService iConfigService;
+    private ISysConfigService iSysConfigService;
 
     @Override
     public String getMsgFromThird() {
-        String jitangKey = iConfigService.getById(1).getJuheJitangKey();
+        String jitangKey = iSysConfigService.getValue("juhe_jitang_key");
         if (StringUtils.isEmpty(jitangKey)) {
             return null;
         }
@@ -38,6 +38,32 @@ public class JiTangMsgServiceImpl implements JiTangMsgService {
         return null;
     }
 
+    @Override
+    public JSONObject getEnglish() {
+        String show_id = iSysConfigService.getValue("showapi_appid");
+        String show_secret = iSysConfigService.getValue("showapi_secret");
+        if (StringUtils.isEmpty(show_id)) {
+            return null;
+        }
+        if (StringUtils.isEmpty(show_secret)) {
+            return null;
+        }
+        String get = HttpUtil.doGet("https://route.showapi.com/1211-1?" +
+                "showapi_appid=" + show_id+
+                "&showapi_sign="+show_secret);
+        if (StringUtils.isNotEmpty(get)) {
+            JSONObject jsonObject = JSON.parseObject(get);
+            if (0 != jsonObject.getInteger("showapi_res_code")) {
+                return null;
+            }
+            return jsonObject
+                    .getJSONObject("showapi_res_body")
+                    .getJSONArray("data")
+                    .getJSONObject(0);
+        }
+        return null;
+    }
+
     /**
      *
      * @param city 城市
@@ -45,7 +71,7 @@ public class JiTangMsgServiceImpl implements JiTangMsgService {
      * @throws UnsupportedEncodingException 异常
      */
     public JSONObject getWeatherFromThird(String city) throws UnsupportedEncodingException {
-        String weatherKey = iConfigService.getById(1).getJuheWeatherKey();
+        String weatherKey = iSysConfigService.getValue("juhe_weather_key");
         if (StringUtils.isEmpty(weatherKey)) {
             return null;
         }
@@ -66,8 +92,8 @@ public class JiTangMsgServiceImpl implements JiTangMsgService {
 
     @Override
     public JSONObject getWeatherFromThird2(String city) throws UnsupportedEncodingException {
-        String yikeappid = iConfigService.getById(1).getYikeAppid();
-        String yikeappsecret = iConfigService.getById(1).getYikeAppsecret();
+        String yikeappid = iSysConfigService.getValue("yike_appid");
+        String yikeappsecret = iSysConfigService.getValue("yike_secret");
         if (StringUtils.isEmpty(yikeappid)) {
             return null;
         }
@@ -88,6 +114,26 @@ public class JiTangMsgServiceImpl implements JiTangMsgService {
         }
         return null;
 
+    }
+
+    @Override
+    public JSONObject getWeatherFromThird3(String city) throws UnsupportedEncodingException {
+        if (StringUtils.isEmpty(city)) {
+            return null;
+        }
+        String get = HttpUtil.doGet("https://v0.yiketianqi.com/api?unescape=1&version=v91" +
+                "&appid=43656176" +
+                "&appsecret=I42og6Lm" +
+                "&ext=&cityid=&city=" +
+                "&city="+city);
+        if (StringUtils.isNotEmpty(get)) {
+            JSONObject jsonObject = JSON.parseObject(get);
+            if (!jsonObject.containsKey("cityid")) {
+                return null;
+            }
+            return jsonObject.getJSONArray("data").getJSONObject(0);
+        }
+        return null;
     }
 
 }

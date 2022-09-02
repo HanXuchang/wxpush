@@ -1,10 +1,9 @@
 package com.hank.controller;
 
 import com.alibaba.fastjson.JSONObject;
-import com.hank.entity.Config;
 import com.hank.entity.UserEntity;
-import com.hank.service.IConfigService;
-import com.hank.service.JiTangMsgService;
+import com.hank.service.ISysConfigService;
+import com.hank.service.MsgService;
 import com.hank.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.mp.api.WxMpService;
@@ -28,17 +27,29 @@ public class WxController {
 
 
     @Resource
-    private IConfigService iConfigService;
+    private ISysConfigService iSysConfigService;
     @Resource
-    private JiTangMsgService jiTangMsgService;
+    private MsgService msgService;
     @Resource
     private UserService userService;
+
+    private JSONObject weatherFromThird = null;
+    private JSONObject weatherFromThird2 = null;
+    private JSONObject weatherFromThird3 = null;
+    private String info = null;           //天气
+    private String temperature = null;    //温度
+    private String tem1 = null;           //最高温度
+    private String tem2 = null;           //最低温度
+    private String humidity = null;       //湿度
+
+    private String appId = null;
+    private String secret = null;
 
     @GetMapping("/wx/push")
     public String wxPush() {
         List<UserEntity> list = userService.list();
         for (UserEntity entity : list) {
-            push(entity);
+            push2(entity);
         }
         return "推送成功";
     }
@@ -62,9 +73,8 @@ public class WxController {
      * @param userEntity 用户信息
      */
     private void push(UserEntity userEntity) {
-        Config config = iConfigService.getById(1);
-        String appId = config.getAppId();
-        String secret = config.getSecret();
+        appId = iSysConfigService.getValue("app_id");
+        secret = iSysConfigService.getValue("secret");
         if (StringUtils.isEmpty(userEntity.getOpenId())) {
             throw new RuntimeException("推送用户为空");
         }
@@ -72,13 +82,8 @@ public class WxController {
             log.info("微信配置信息，appid:{},secret:{}", appId, secret);
             throw new RuntimeException("微信配置错误，请检查");
         }
-        JSONObject weatherFromThird = null;
-        JSONObject weatherFromThird2 = null;
-        String info = null;           //天气
-        String temperature = null;    //温度
-        String humidity = null;       //湿度
         try {
-            weatherFromThird = jiTangMsgService.getWeatherFromThird(userEntity.getCity());
+            weatherFromThird = msgService.getWeatherFromThird(userEntity.getCity());
             if (weatherFromThird!=null){
                 info = weatherFromThird.getJSONObject("realtime").getString("info");
                 temperature = weatherFromThird.getJSONObject("realtime").getString("temperature");
@@ -89,7 +94,7 @@ public class WxController {
         }
         if (null == weatherFromThird) {
             try {
-                weatherFromThird2 = jiTangMsgService.getWeatherFromThird2(userEntity.getCity());
+                weatherFromThird2 = msgService.getWeatherFromThird2(userEntity.getCity());
                 info = weatherFromThird2.getString("wea");
                 temperature = weatherFromThird2.getString("tem");
                 humidity = weatherFromThird2.getString("humidity");
@@ -100,7 +105,7 @@ public class WxController {
                 throw new RuntimeException("获取天气出错");
             }
         }
-        String jiTangMsg = jiTangMsgService.getMsgFromThird();
+        String jiTangMsg = msgService.getMsgFromThird();
 //        String jiTangMsg = "嘿嘿";
 
         WxMpDefaultConfigImpl wxMpConfigStorage = new WxMpDefaultConfigImpl();
@@ -120,6 +125,66 @@ public class WxController {
             wxMpService.getTemplateMsgService().sendTemplateMsg(templateMessage);
         } catch (Exception e) {
             log.error("推送失败", e);
+        }
+    }
+
+    /**
+     * 推送微信模板消息
+     * @param userEntity 用户信息
+     */
+    private void push2(UserEntity userEntity) {
+        appId = iSysConfigService.getValue("app_id");
+        secret = iSysConfigService.getValue("secret");
+        if (StringUtils.isEmpty(userEntity.getOpenId())) {
+            throw new RuntimeException("推送用户为空");
+        }
+        if (StringUtils.isEmpty(appId) || StringUtils.isEmpty(secret)) {
+            throw new RuntimeException("微信配置错误，请检查");
+        }
+        try {
+            weatherFromThird3 = msgService.getWeatherFromThird3(userEntity.getCity());
+            info = weatherFromThird3.getString("wea");
+            temperature = weatherFromThird3.getString("tem");
+            tem1 = weatherFromThird3.getString("tem1");
+            tem2 = weatherFromThird3.getString("tem2");
+            humidity = weatherFromThird3.getString("humidity");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        if (null == weatherFromThird3){
+            throw new RuntimeException("获取天气出错");
+        }
+        //鸡汤
+//        String jiTangMsg = msgService.getMsgFromThird();
+        String en = msgService.getEnglish().getString("english");
+        String cn = msgService.getEnglish().getString("chinese");
+
+        WxMpDefaultConfigImpl wxMpConfigStorage = new WxMpDefaultConfigImpl();
+        wxMpConfigStorage.setAppId(appId);
+        wxMpConfigStorage.setSecret(secret);
+        WxMpService wxMpService = new WxMpServiceImpl();
+        wxMpService.setWxMpConfigStorage(wxMpConfigStorage);
+        WxMpTemplateMessage templateMessage = WxMpTemplateMessage.builder().toUser(userEntity.getOpenId()).templateId(userEntity.getTemplateId()).build();
+        //第一句话
+        templateMessage.addData(new WxMpTemplateData("first", userEntity.getFirstMsg() == null ? "" : userEntity.getFirstMsg(), "#0066cc"));
+        //城市
+        templateMessage.addData(new WxMpTemplateData("city", userEntity.getCity() == null ? "未知" : userEntity.getCity(), "#0099FF"));
+        //天气
+        templateMessage.addData(new WxMpTemplateData("weather", info, "#0099FF"));
+        //当前温度
+        templateMessage.addData(new WxMpTemplateData("temperature", temperature + "℃", "#E6421A"));
+        //今日温度
+        templateMessage.addData(new WxMpTemplateData("tem1", tem1 + "℃", "#E6421A"));
+        templateMessage.addData(new WxMpTemplateData("tem2", tem2 + "℃", "#E6421A"));
+        //今日湿度
+        templateMessage.addData(new WxMpTemplateData("humidity", humidity, "#3333CC"));
+        //英文
+        templateMessage.addData(new WxMpTemplateData("en", StringUtils.isEmpty(en) ? "" : en, "#F6B26B"));
+        //中文
+        templateMessage.addData(new WxMpTemplateData("cn", StringUtils.isEmpty(cn) ? "" : cn, "#6FA8DC"));
+        try {
+            wxMpService.getTemplateMsgService().sendTemplateMsg(templateMessage);
+        } catch (Exception ignored) {
         }
     }
 
