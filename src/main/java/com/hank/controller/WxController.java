@@ -15,6 +15,7 @@ import me.chanjar.weixin.mp.config.impl.WxMpDefaultConfigImpl;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
@@ -55,6 +56,16 @@ public class WxController {
         for (UserEntity entity : list) {
             push2(entity);
         }
+        return "推送成功";
+    }
+
+    @GetMapping("/wx/pushById/{id}")
+    public String wxPush(@PathVariable int id) {
+        UserEntity entity1 = userService.getById(id);
+        if (entity1 == null){
+            return "未有此用户";
+        }
+        push2(entity1);
         return "推送成功";
     }
 
